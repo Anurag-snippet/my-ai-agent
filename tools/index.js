@@ -1,8 +1,13 @@
-const { listFiles, readFile } = require("./fileTools");
+const {
+    listFiles,
+    readFile,
+    searchCode
+} = require("./fileTools");
 
 const tools = {
     listFiles,
-    readFile
+    readFile,
+    searchCode
 };
 
 module.exports = tools;

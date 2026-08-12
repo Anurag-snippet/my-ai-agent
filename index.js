@@ -47,6 +47,27 @@ const readFileDeclaration = {
   },
 };
 
+const searchCodeDeclaration = {
+    name: "searchCode",
+
+    description:
+        "Searches the project's source code for a given text or keyword.",
+
+    parameters: {
+        type: Type.OBJECT,
+
+        properties: {
+            query: {
+                type: Type.STRING,
+                description:
+                    "The keyword or text to search for in the source code."
+            }
+        },
+
+        required: ["query"]
+    }
+};
+
 async function main() {
 
     const contents = [
@@ -54,7 +75,7 @@ async function main() {
             role: "user",
             parts: [
                 {
-                    text: "Read tools/fileTools.js and explain what it does.",
+                    text: "Find where listFiles is defined in the project.",
                 },
             ],
         },
@@ -77,6 +98,7 @@ async function main() {
                         functionDeclarations: [
                             listFilesDeclaration,
                             readFileDeclaration,
+                            searchCodeDeclaration
                         ],
                     },
                 ],
