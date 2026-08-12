@@ -1,13 +1,15 @@
 const {
     listFiles,
     readFile,
-    searchCode
+    searchCode,
+    writeFile
 } = require("./fileTools");
 
 const tools = {
     listFiles,
     readFile,
-    searchCode
+    searchCode,
+    writeFile
 };
 
 module.exports = tools;

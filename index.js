@@ -68,6 +68,30 @@ const searchCodeDeclaration = {
     }
 };
 
+const writeFileDeclaration = {
+    name: "writeFile",
+
+    description: "Writes content to a file. Use this to create or modify files.",
+
+    parameters: {
+        type: Type.OBJECT,
+
+        properties: {
+            filePath: {
+                type: Type.STRING,
+                description: "The path of the file to create or modify."
+            },
+
+            content: {
+                type: Type.STRING,
+                description: "The complete new content of the file."
+            }
+        },
+
+        required: ["filePath", "content"]
+    }
+};
+
 async function main() {
 
     const contents = [
@@ -75,7 +99,7 @@ async function main() {
             role: "user",
             parts: [
                 {
-                    text: "Find where listFiles is defined in the project.",
+                   text: "Create a file called test-agent.txt containing the text 'Hello from my AI agent'.",
                 },
             ],
         },
@@ -98,7 +122,8 @@ async function main() {
                         functionDeclarations: [
                             listFilesDeclaration,
                             readFileDeclaration,
-                            searchCodeDeclaration
+                            searchCodeDeclaration,
+                            writeFileDeclaration
                         ],
                     },
                 ],

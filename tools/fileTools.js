@@ -1,22 +1,17 @@
 const fs = require("fs");
-const path = require("path");
 const { globSync } = require("glob");
 
 function listFiles({ directory = "." }) {
-
     const files = fs.readdirSync(directory);
 
     return files;
 }
 
-
 function readFile({ filePath }) {
-
     const content = fs.readFileSync(filePath, "utf-8");
 
     return content;
 }
-
 
 function searchCode({ query }) {
 
@@ -55,10 +50,17 @@ function searchCode({ query }) {
     return results;
 }
 
+function writeFile({ filePath, content }) {
+
+    fs.writeFileSync(filePath, content, "utf-8");
+
+    return `Successfully wrote to ${filePath}`;
+}
 
 module.exports = {
     listFiles,
     readFile,
-    searchCode
+    searchCode,
+    writeFile
 };
 
