@@ -1,64 +1,180 @@
 require("dotenv").config();
 
-const { GoogleGenAI } = require("@google/genai");
-const readline = require("readline");
+const { GoogleGenAI, Type } = require("@google/genai");
+
+const tools = require("./tools");
 
 const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
+const listFilesDeclaration = {
+  name: "listFiles",
 
-// Store the conversation
-const conversation = [];
+  description: "Lists the files and folders inside a directory.",
 
-function askQuestion() {
-    rl.question("You: ", async (question) => {
+  parameters: {
+    type: Type.OBJECT,
 
-        if (question.toLowerCase() === "exit") {
-            console.log("Goodbye!");
-            rl.close();
-            return;
-        }
+    properties: {
+      directory: {
+        type: Type.STRING,
+        description:
+          "The directory to inspect. Use '.' for the current project.",
+      },
+    },
 
-        // Add user's message to conversation
-        conversation.push({
+    required: ["directory"],
+  },
+};
+
+const readFileDeclaration = {
+  name: "readFile",
+
+  description: "Reads the contents of a file.",
+
+  parameters: {
+    type: Type.OBJECT,
+
+    properties: {
+      filePath: {
+        type: Type.STRING,
+        description: "The path of the file to read.",
+      },
+    },
+
+    required: ["filePath"],
+  },
+};
+
+async function main() {
+
+    const contents = [
+        {
             role: "user",
-            parts: [{ text: question }]
+            parts: [
+                {
+                    text: "Read tools/fileTools.js and explain what it does.",
+                },
+            ],
+        },
+    ];
+
+    while (true) {
+
+        // --------------------------------
+        // Ask Gemini
+        // --------------------------------
+
+        const response = await ai.models.generateContent({
+            model: "gemini-3.1-flash-lite",
+
+            contents: contents,
+
+            config: {
+                tools: [
+                    {
+                        functionDeclarations: [
+                            listFilesDeclaration,
+                            readFileDeclaration,
+                        ],
+                    },
+                ],
+            },
         });
 
-        try {
-            const response = await ai.models.generateContent({
-                model: "gemini-3.1-flash-lite",
-                contents: conversation
-            });
 
-            const answer = response.text;
+        // --------------------------------
+        // Check if Gemini wants a tool
+        // --------------------------------
 
-            console.log("AI:", answer);
-            console.log();
+        if (
+            response.functionCalls &&
+            response.functionCalls.length > 0
+        ) {
 
-            // Add AI's response to conversation
-            conversation.push({
-                role: "model",
-                parts: [{ text: answer }]
-            });
+            // Gemini can potentially request
+            // multiple tools
+            for (const functionCall of response.functionCalls) {
 
-        } catch (error) {
-            console.log("Error:", error.message);
+                console.log("\n🔧 Gemini wants to use:");
+                console.log("Tool:", functionCall.name);
+                console.log("Arguments:", functionCall.args);
 
-            // Remove user's message if API call failed
-            conversation.pop();
+
+                // --------------------------------
+                // Find tool
+                // --------------------------------
+
+                const tool = tools[functionCall.name];
+
+                if (!tool) {
+                    throw new Error(
+                        `Tool ${functionCall.name} not found`
+                    );
+                }
+
+
+                // --------------------------------
+                // Execute tool
+                // --------------------------------
+
+                const result = tool(functionCall.args);
+
+                console.log("\n📁 Tool result:");
+                console.log(result);
+
+
+                // --------------------------------
+                // Add Gemini's tool call
+                // --------------------------------
+
+                contents.push(
+                    response.candidates[0].content
+                );
+
+
+                // --------------------------------
+                // Add tool result
+                // --------------------------------
+
+                contents.push({
+                    role: "tool",
+
+                    parts: [
+                        {
+                            functionResponse: {
+                                name: functionCall.name,
+
+                                response: {
+                                    result: result,
+                                },
+
+                                id: functionCall.id,
+                            },
+                        },
+                    ],
+                });
+            }
+
+            // Continue the while loop
+            // Gemini will see the tool result
+            // and decide what to do next.
+
+            continue;
         }
 
-        askQuestion();
-    });
+
+        // --------------------------------
+        // No tool call = final answer
+        // --------------------------------
+
+        console.log("\n🤖 Gemini:");
+        console.log(response.text);
+
+        break;
+    }
 }
 
-console.log("🤖 My AI Agent");
-console.log("Type 'exit' to quit.\n");
+main();
 
-askQuestion();
