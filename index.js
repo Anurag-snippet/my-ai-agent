@@ -92,6 +92,27 @@ const writeFileDeclaration = {
     }
 };
 
+const runCommandDeclaration = {
+    name: "runCommand",
+
+    description:
+        "Runs a terminal command in the current project and returns its output.",
+
+    parameters: {
+        type: Type.OBJECT,
+
+        properties: {
+            command: {
+                type: Type.STRING,
+                description:
+                    "The terminal command to execute."
+            }
+        },
+
+        required: ["command"]
+    }
+};
+
 async function main() {
 
     const contents = [
@@ -99,7 +120,7 @@ async function main() {
             role: "user",
             parts: [
                 {
-                   text: "Create a file called test-agent.txt containing the text 'Hello from my AI agent'.",
+                   text: "Run node --version and tell me the Node.js version.",
                 },
             ],
         },
@@ -123,7 +144,8 @@ async function main() {
                             listFilesDeclaration,
                             readFileDeclaration,
                             searchCodeDeclaration,
-                            writeFileDeclaration
+                            writeFileDeclaration,
+                            runCommandDeclaration
                         ],
                     },
                 ],

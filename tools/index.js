@@ -5,11 +5,14 @@ const {
     writeFile
 } = require("./fileTools");
 
+const { runCommand } = require("./terminalTools");
+
 const tools = {
     listFiles,
     readFile,
     searchCode,
-    writeFile
+    writeFile,
+    runCommand
 };
 
 module.exports = tools;
