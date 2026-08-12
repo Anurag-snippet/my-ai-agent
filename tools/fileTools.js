@@ -1,32 +1,54 @@
 const fs = require("fs");
 const { globSync } = require("glob");
 
+const { getSafePath } = require("../workspace");
+
+
 function listFiles({ directory = "." }) {
-    const files = fs.readdirSync(directory);
+
+    const safeDirectory = getSafePath(directory);
+
+    const files = fs.readdirSync(safeDirectory);
 
     return files;
 }
 
+
 function readFile({ filePath }) {
-    const content = fs.readFileSync(filePath, "utf-8");
+
+    const safePath = getSafePath(filePath);
+
+    const content = fs.readFileSync(
+        safePath,
+        "utf-8"
+    );
 
     return content;
 }
 
+
 function searchCode({ query }) {
 
-    const files = globSync("**/*.{js,jsx,ts,tsx,py,java,cpp,h}", {
-        ignore: [
-            "node_modules/**",
-            ".git/**"
-        ]
-    });
+    const files = globSync(
+        "**/*.{js,jsx,ts,tsx,py,java,cpp,h}",
+        {
+            ignore: [
+                "node_modules/**",
+                ".git/**"
+            ]
+        }
+    );
 
     const results = [];
 
     for (const file of files) {
 
-        const content = fs.readFileSync(file, "utf-8");
+        const safePath = getSafePath(file);
+
+        const content = fs.readFileSync(
+            safePath,
+            "utf-8"
+        );
 
         const lines = content.split("\n");
 
@@ -50,12 +72,20 @@ function searchCode({ query }) {
     return results;
 }
 
+
 function writeFile({ filePath, content }) {
 
-    fs.writeFileSync(filePath, content, "utf-8");
+    const safePath = getSafePath(filePath);
+
+    fs.writeFileSync(
+        safePath,
+        content,
+        "utf-8"
+    );
 
     return `Successfully wrote to ${filePath}`;
 }
+
 
 module.exports = {
     listFiles,
@@ -63,4 +93,3 @@ module.exports = {
     searchCode,
     writeFile
 };
-
