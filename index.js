@@ -12,6 +12,9 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
+// Store the conversation
+const conversation = [];
+
 function askQuestion() {
     rl.question("You: ", async (question) => {
 
@@ -21,17 +24,34 @@ function askQuestion() {
             return;
         }
 
+        // Add user's message to conversation
+        conversation.push({
+            role: "user",
+            parts: [{ text: question }]
+        });
+
         try {
             const response = await ai.models.generateContent({
                 model: "gemini-3.1-flash-lite",
-                contents: question
+                contents: conversation
             });
 
-            console.log("AI:", response.text);
+            const answer = response.text;
+
+            console.log("AI:", answer);
             console.log();
+
+            // Add AI's response to conversation
+            conversation.push({
+                role: "model",
+                parts: [{ text: answer }]
+            });
 
         } catch (error) {
             console.log("Error:", error.message);
+
+            // Remove user's message if API call failed
+            conversation.pop();
         }
 
         askQuestion();
