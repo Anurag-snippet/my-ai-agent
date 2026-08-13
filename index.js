@@ -120,7 +120,7 @@ async function main() {
             role: "user",
             parts: [
                 {
-                   text: "Run node --version and tell me the Node.js version.",
+                   text: "Run node --version and tell me what version I am using.",
                 },
             ],
         },
