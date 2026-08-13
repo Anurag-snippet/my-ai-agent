@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const { GoogleGenAI, Type } = require("@google/genai");
+const readline = require("readline");
 
 const tools = require("./tools");
 
@@ -48,202 +49,203 @@ const readFileDeclaration = {
 };
 
 const searchCodeDeclaration = {
-    name: "searchCode",
+  name: "searchCode",
 
-    description:
-        "Searches the project's source code for a given text or keyword.",
+  description:
+    "Searches the project's source code for a given text or keyword.",
 
-    parameters: {
-        type: Type.OBJECT,
+  parameters: {
+    type: Type.OBJECT,
 
-        properties: {
-            query: {
-                type: Type.STRING,
-                description:
-                    "The keyword or text to search for in the source code."
-            }
-        },
+    properties: {
+      query: {
+        type: Type.STRING,
+        description: "The keyword or text to search for in the source code.",
+      },
+    },
 
-        required: ["query"]
-    }
+    required: ["query"],
+  },
 };
 
 const writeFileDeclaration = {
-    name: "writeFile",
+  name: "writeFile",
 
-    description: "Writes content to a file. Use this to create or modify files.",
+  description: "Writes content to a file. Use this to create or modify files.",
 
-    parameters: {
-        type: Type.OBJECT,
+  parameters: {
+    type: Type.OBJECT,
 
-        properties: {
-            filePath: {
-                type: Type.STRING,
-                description: "The path of the file to create or modify."
-            },
+    properties: {
+      filePath: {
+        type: Type.STRING,
+        description: "The path of the file to create or modify.",
+      },
 
-            content: {
-                type: Type.STRING,
-                description: "The complete new content of the file."
-            }
-        },
+      content: {
+        type: Type.STRING,
+        description: "The complete new content of the file.",
+      },
+    },
 
-        required: ["filePath", "content"]
-    }
+    required: ["filePath", "content"],
+  },
 };
 
 const runCommandDeclaration = {
-    name: "runCommand",
+  name: "runCommand",
 
-    description:
-        "Runs a terminal command in the current project and returns its output.",
+  description:
+    "Runs a terminal command in the current project and returns its output.",
 
-    parameters: {
-        type: Type.OBJECT,
+  parameters: {
+    type: Type.OBJECT,
 
-        properties: {
-            command: {
-                type: Type.STRING,
-                description:
-                    "The terminal command to execute."
-            }
-        },
+    properties: {
+      command: {
+        type: Type.STRING,
+        description: "The terminal command to execute.",
+      },
+    },
 
-        required: ["command"]
-    }
+    required: ["command"],
+  },
 };
 
 async function main() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
 
-    const contents = [
+  const question = (query) => {
+    return new Promise((resolve) => {
+      rl.question(query, resolve);
+    });
+  };
+
+  const contents = [];
+
+  while (true) {
+    const userInput = await question("\nYou: ");
+
+    if (userInput.toLowerCase() === "exit") {
+      rl.close();
+      break;
+    }
+
+    contents.push({
+      role: "user",
+
+      parts: [
         {
-            role: "user",
-            parts: [
-                {
-                   text: "Run node --version and tell me what version I am using.",
-                },
-            ],
+          text: userInput,
         },
-    ];
+      ],
+    });
 
     while (true) {
+      // --------------------------------
+      // Ask Gemini
+      // --------------------------------
 
-        // --------------------------------
-        // Ask Gemini
-        // --------------------------------
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-flash-lite",
 
-        const response = await ai.models.generateContent({
-            model: "gemini-3.1-flash-lite",
+        contents: contents,
 
-            contents: contents,
-
-            config: {
-                tools: [
-                    {
-                        functionDeclarations: [
-                            listFilesDeclaration,
-                            readFileDeclaration,
-                            searchCodeDeclaration,
-                            writeFileDeclaration,
-                            runCommandDeclaration
-                        ],
-                    },
-                ],
+        config: {
+          tools: [
+            {
+              functionDeclarations: [
+                listFilesDeclaration,
+                readFileDeclaration,
+                searchCodeDeclaration,
+                writeFileDeclaration,
+                runCommandDeclaration,
+              ],
             },
-        });
+          ],
+        },
+      });
 
+      // --------------------------------
+      // Check if Gemini wants a tool
+      // --------------------------------
 
-        // --------------------------------
-        // Check if Gemini wants a tool
-        // --------------------------------
+      if (response.functionCalls && response.functionCalls.length > 0) {
+        // Gemini can potentially request
+        // multiple tools
+        for (const functionCall of response.functionCalls) {
+          console.log("\n🔧 Gemini wants to use:");
+          console.log("Tool:", functionCall.name);
+          console.log("Arguments:", functionCall.args);
 
-        if (
-            response.functionCalls &&
-            response.functionCalls.length > 0
-        ) {
+          // --------------------------------
+          // Find tool
+          // --------------------------------
 
-            // Gemini can potentially request
-            // multiple tools
-            for (const functionCall of response.functionCalls) {
+          const tool = tools[functionCall.name];
 
-                console.log("\n🔧 Gemini wants to use:");
-                console.log("Tool:", functionCall.name);
-                console.log("Arguments:", functionCall.args);
+          if (!tool) {
+            throw new Error(`Tool ${functionCall.name} not found`);
+          }
 
+          // --------------------------------
+          // Execute tool
+          // --------------------------------
 
-                // --------------------------------
-                // Find tool
-                // --------------------------------
+          const result = tool(functionCall.args);
 
-                const tool = tools[functionCall.name];
+          console.log("\n📁 Tool result:");
+          console.log(result);
 
-                if (!tool) {
-                    throw new Error(
-                        `Tool ${functionCall.name} not found`
-                    );
-                }
+          // --------------------------------
+          // Add Gemini's tool call
+          // --------------------------------
 
+          contents.push(response.candidates[0].content);
 
-                // --------------------------------
-                // Execute tool
-                // --------------------------------
+          // --------------------------------
+          // Add tool result
+          // --------------------------------
 
-                const result = tool(functionCall.args);
+          contents.push({
+            role: "tool",
 
-                console.log("\n📁 Tool result:");
-                console.log(result);
+            parts: [
+              {
+                functionResponse: {
+                  name: functionCall.name,
 
+                  response: {
+                    result: result,
+                  },
 
-                // --------------------------------
-                // Add Gemini's tool call
-                // --------------------------------
-
-                contents.push(
-                    response.candidates[0].content
-                );
-
-
-                // --------------------------------
-                // Add tool result
-                // --------------------------------
-
-                contents.push({
-                    role: "tool",
-
-                    parts: [
-                        {
-                            functionResponse: {
-                                name: functionCall.name,
-
-                                response: {
-                                    result: result,
-                                },
-
-                                id: functionCall.id,
-                            },
-                        },
-                    ],
-                });
-            }
-
-            // Continue the while loop
-            // Gemini will see the tool result
-            // and decide what to do next.
-
-            continue;
+                  id: functionCall.id,
+                },
+              },
+            ],
+          });
         }
 
+        // Continue the while loop
+        // Gemini will see the tool result
+        // and decide what to do next.
 
-        // --------------------------------
-        // No tool call = final answer
-        // --------------------------------
+        continue;
+      }
 
-        console.log("\n🤖 Gemini:");
-        console.log(response.text);
+      // --------------------------------
+      // No tool call = final answer
+      // --------------------------------
 
-        break;
+      console.log("\n🤖 Gemini:");
+      console.log(response.text);
+
+      break;
     }
+  }
 }
 
 main();
-
