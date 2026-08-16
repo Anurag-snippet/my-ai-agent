@@ -26,7 +26,6 @@ function readFile({ filePath }) {
     return content;
 }
 
-
 function searchCode({ query }) {
 
     const files = globSync(
