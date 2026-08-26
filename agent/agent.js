@@ -111,6 +111,43 @@ const writeFileDeclaration = {
   },
 };
 
+const editFileDeclaration = {
+    name: "editFile",
+
+    description:
+        "Makes a precise edit to an existing file by replacing one exact piece of text with new text.",
+
+    parameters: {
+        type: Type.OBJECT,
+
+        properties: {
+            filePath: {
+                type: Type.STRING,
+                description:
+                    "The path of the file to edit."
+            },
+
+            oldText: {
+                type: Type.STRING,
+                description:
+                    "The exact existing text that should be replaced."
+            },
+
+            newText: {
+                type: Type.STRING,
+                description:
+                    "The new text that should replace oldText."
+            }
+        },
+
+        required: [
+            "filePath",
+            "oldText",
+            "newText"
+        ]
+    }
+};
+
 const runCommandDeclaration = {
   name: "runCommand",
 
@@ -141,6 +178,7 @@ const toolDeclarations = [
     readFileDeclaration,
     searchCodeDeclaration,
     writeFileDeclaration,
+    editFileDeclaration,
     runCommandDeclaration,
 ];
 

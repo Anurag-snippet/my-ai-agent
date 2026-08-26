@@ -114,11 +114,52 @@ function writeFile({ filePath, content }) {
     return `Successfully wrote to ${filePath}`;
 }
 
+function editFile({ filePath, oldText, newText }) {
+    const safePath = getSafePath(filePath);
+
+    const content = fs.readFileSync(
+        safePath,
+        "utf-8"
+    );
+
+    const occurrences = content.split(oldText).length - 1;
+
+    if (occurrences === 0) {
+        throw new Error(
+            "The specified oldText was not found in the file."
+        );
+    }
+
+    if (occurrences > 1) {
+        throw new Error(
+            `The specified oldText was found ${occurrences} times. ` +
+            "Please provide a more specific piece of text."
+        );
+    }
+
+    const updatedContent = content.replace(
+        oldText,
+        newText
+    );
+
+    fs.writeFileSync(
+        safePath,
+        updatedContent,
+        "utf-8"
+    );
+
+    return {
+        success: true,
+        filePath: filePath,
+        message: "File edited successfully."
+    };
+}
 
 module.exports = {
     listFiles,
     getProjectStructure,
     readFile,
     searchCode,
-    writeFile
+    writeFile,
+    editFile
 };

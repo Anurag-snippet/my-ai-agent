@@ -3,7 +3,8 @@ const {
     getProjectStructure,
     readFile,
     searchCode,
-    writeFile
+    writeFile,
+    editFile
 } = require("./fileTools");
 
 const { runCommand } = require("./terminalTools");
@@ -14,6 +15,7 @@ const tools = {
     readFile,
     searchCode,
     writeFile,
+    editFile,
     runCommand
 };
 
