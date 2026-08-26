@@ -40,21 +40,23 @@ function readFile({ filePath }) {
 }
 
 function searchCode({ query }) {
-
     const files = globSync(
         "**/*.{js,jsx,ts,tsx,py,java,cpp,h}",
         {
             ignore: [
                 "node_modules/**",
-                ".git/**"
-            ]
+                ".git/**",
+                "dist/**",
+                "build/**",
+                ".next/**"
+            ],
+            nodir: true
         }
     );
 
     const results = [];
 
     for (const file of files) {
-
         const safePath = getSafePath(file);
 
         const content = fs.readFileSync(
@@ -65,17 +67,31 @@ function searchCode({ query }) {
         const lines = content.split("\n");
 
         for (let i = 0; i < lines.length; i++) {
-
             if (
                 lines[i]
                     .toLowerCase()
                     .includes(query.toLowerCase())
             ) {
+                const start = Math.max(0, i - 2);
+                const end = Math.min(
+                    lines.length,
+                    i + 3
+                );
+
+                const context = [];
+
+                for (let j = start; j < end; j++) {
+                    context.push({
+                        line: j + 1,
+                        text: lines[j]
+                    });
+                }
 
                 results.push({
                     file: file,
                     line: i + 1,
-                    text: lines[i].trim()
+                    match: lines[i].trim(),
+                    context: context
                 });
             }
         }
