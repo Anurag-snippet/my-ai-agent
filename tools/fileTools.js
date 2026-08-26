@@ -13,6 +13,19 @@ function listFiles({ directory = "." }) {
     return files;
 }
 
+function getProjectStructure() {
+    const files = globSync("**/*", {
+        ignore: [
+            "node_modules/**",
+            ".git/**",
+            "dist/**",
+            "build/**",
+            ".next/**"
+        ],
+        nodir: true
+    });
+    return files;
+}
 
 function readFile({ filePath }) {
 
@@ -88,6 +101,7 @@ function writeFile({ filePath, content }) {
 
 module.exports = {
     listFiles,
+    getProjectStructure,
     readFile,
     searchCode,
     writeFile

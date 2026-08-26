@@ -1,5 +1,6 @@
 const {
     listFiles,
+    getProjectStructure,
     readFile,
     searchCode,
     writeFile
@@ -9,6 +10,7 @@ const { runCommand } = require("./terminalTools");
 
 const tools = {
     listFiles,
+    getProjectStructure,
     readFile,
     searchCode,
     writeFile,

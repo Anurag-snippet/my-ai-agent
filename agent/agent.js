@@ -35,6 +35,19 @@ const listFilesDeclaration = {
   },
 };
 
+const getProjectStructureDeclaration = {
+    name: "getProjectStructure",
+
+    description:
+        "Returns the file structure of the project while excluding dependency and build directories.",
+
+    parameters: {
+        type: Type.OBJECT,
+
+        properties: {},
+    },
+};
+
 const readFileDeclaration = {
   name: "readFile",
 
@@ -123,11 +136,12 @@ const runCommandDeclaration = {
 // --------------------------------
 
 const toolDeclarations = [
-  listFilesDeclaration,
-  readFileDeclaration,
-  searchCodeDeclaration,
-  writeFileDeclaration,
-  runCommandDeclaration,
+    listFilesDeclaration,
+    getProjectStructureDeclaration,
+    readFileDeclaration,
+    searchCodeDeclaration,
+    writeFileDeclaration,
+    runCommandDeclaration,
 ];
 
 // --------------------------------
