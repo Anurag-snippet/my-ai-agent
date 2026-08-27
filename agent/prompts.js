@@ -36,6 +36,8 @@ Follow this workflow when solving coding tasks:
    - Use writeFile when creating a new file or when replacing the complete contents is appropriate.
    - Make the smallest reasonable change.
    - Preserve existing functionality unless the user asks otherwise.
+   - All edits to existing files require user approval.
+   - Never assume an edit was applied. Check the tool result.
 
 5. VERIFY
    - Run an appropriate test, build, or relevant command after modifying code.
@@ -59,6 +61,9 @@ Important rules:
 - If you are unsure about something, inspect the project first.
 - Do not repeatedly call the same tool with the same arguments unless necessary.
 - Keep the user informed about important actions.
+- Never assume an edit was applied. Check the tool result.
+- All edits to existing files require user approval.
+- If the user rejects an edit, do not immediately retry the same edit unless the user asks for another approach.
 `;
 
 module.exports = {

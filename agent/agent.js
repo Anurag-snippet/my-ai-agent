@@ -1,7 +1,12 @@
+const fs = require("fs");
+
 const { GoogleGenAI, Type } = require("@google/genai");
 
 const tools = require("../tools");
 const { SYSTEM_PROMPT } = require("./prompts");
+const { askForApproval } = require("./approval");
+const { createDiff } = require("./diff");
+const { getSafePath } = require("../workspace");
 
 // --------------------------------
 // Gemini client
@@ -36,16 +41,16 @@ const listFilesDeclaration = {
 };
 
 const getProjectStructureDeclaration = {
-    name: "getProjectStructure",
+  name: "getProjectStructure",
 
-    description:
-        "Returns the file structure of the project while excluding dependency and build directories.",
+  description:
+    "Returns the file structure of the project while excluding dependency and build directories.",
 
-    parameters: {
-        type: Type.OBJECT,
+  parameters: {
+    type: Type.OBJECT,
 
-        properties: {},
-    },
+    properties: {},
+  },
 };
 
 const readFileDeclaration = {
@@ -112,40 +117,33 @@ const writeFileDeclaration = {
 };
 
 const editFileDeclaration = {
-    name: "editFile",
+  name: "editFile",
 
-    description:
-        "Makes a precise edit to an existing file by replacing one exact piece of text with new text.",
+  description:
+    "Makes a precise edit to an existing file by replacing one exact piece of text with new text.",
 
-    parameters: {
-        type: Type.OBJECT,
+  parameters: {
+    type: Type.OBJECT,
 
-        properties: {
-            filePath: {
-                type: Type.STRING,
-                description:
-                    "The path of the file to edit."
-            },
+    properties: {
+      filePath: {
+        type: Type.STRING,
+        description: "The path of the file to edit.",
+      },
 
-            oldText: {
-                type: Type.STRING,
-                description:
-                    "The exact existing text that should be replaced."
-            },
+      oldText: {
+        type: Type.STRING,
+        description: "The exact existing text that should be replaced.",
+      },
 
-            newText: {
-                type: Type.STRING,
-                description:
-                    "The new text that should replace oldText."
-            }
-        },
+      newText: {
+        type: Type.STRING,
+        description: "The new text that should replace oldText.",
+      },
+    },
 
-        required: [
-            "filePath",
-            "oldText",
-            "newText"
-        ]
-    }
+    required: ["filePath", "oldText", "newText"],
+  },
 };
 
 const runCommandDeclaration = {
@@ -173,13 +171,13 @@ const runCommandDeclaration = {
 // --------------------------------
 
 const toolDeclarations = [
-    listFilesDeclaration,
-    getProjectStructureDeclaration,
-    readFileDeclaration,
-    searchCodeDeclaration,
-    writeFileDeclaration,
-    editFileDeclaration,
-    runCommandDeclaration,
+  listFilesDeclaration,
+  getProjectStructureDeclaration,
+  readFileDeclaration,
+  searchCodeDeclaration,
+  writeFileDeclaration,
+  editFileDeclaration,
+  runCommandDeclaration,
 ];
 
 // --------------------------------
@@ -241,11 +239,63 @@ async function runAgent(contents) {
           throw new Error(`Tool ${functionCall.name} not found`);
         }
 
-        const result = tool(functionCall.args);
+        let result;
 
-        console.log("\n📁 Tool result:");
+        if (functionCall.name === "editFile") {
+          const { filePath, oldText, newText } = functionCall.args;
 
-        console.log(result);
+          const safePath = getSafePath(filePath);
+
+          const oldContent = fs.readFileSync(safePath, "utf-8");
+
+          const occurrences = oldContent.split(oldText).length - 1;
+
+          if (occurrences === 0) {
+            throw new Error("The specified oldText was not found in the file.");
+          }
+
+          if (occurrences > 1) {
+            throw new Error(
+              `The specified oldText was found ${occurrences} times.`,
+            );
+          }
+
+          const newContent = oldContent.replace(oldText, newText);
+
+          const diff = createDiff(oldContent, newContent);
+
+          console.log("\n\n📝 Proposed change:");
+          console.log("--------------------------------");
+          console.log(diff);
+          console.log("--------------------------------");
+
+          const approved = await askForApproval("Apply this change?");
+
+          if (approved) {
+            fs.writeFileSync(safePath, newContent, "utf-8");
+
+            console.log("\n✅ Change applied successfully.");
+
+            result = {
+              success: true,
+              message: "Change applied successfully.",
+              filePath,
+            };
+          } else {
+            console.log("\n❌ Change rejected by user.");
+
+            result = {
+              success: false,
+              message: "User rejected the change.",
+              filePath,
+            };
+          }
+        } else {
+          result = tool(functionCall.args);
+
+          console.log("\n📁 Tool result:");
+          console.log(result);
+        }
 
         contents.push({
           role: "tool",

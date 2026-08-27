@@ -122,7 +122,8 @@ function editFile({ filePath, oldText, newText }) {
         "utf-8"
     );
 
-    const occurrences = content.split(oldText).length - 1;
+    const occurrences =
+        content.split(oldText).length - 1;
 
     if (occurrences === 0) {
         throw new Error(
@@ -142,16 +143,12 @@ function editFile({ filePath, oldText, newText }) {
         newText
     );
 
-    fs.writeFileSync(
-        safePath,
-        updatedContent,
-        "utf-8"
-    );
-
     return {
         success: true,
-        filePath: filePath,
-        message: "File edited successfully."
+        filePath,
+        oldContent: content,
+        newContent: updatedContent,
+        safePath,
     };
 }
 
