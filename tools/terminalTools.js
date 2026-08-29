@@ -1,44 +1,27 @@
 const { execSync } = require("child_process");
 
-const ALLOWED_COMMANDS = [
-    "node",
-    "npm",
-    "npx",
-    "git"
-];
-
 function runCommand({ command }) {
+  try {
+    const output = execSync(command, {
+      cwd: process.cwd(),
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 30000,
+    });
 
-    const commandName = command.trim().split(/\s+/)[0];
-
-    if (!ALLOWED_COMMANDS.includes(commandName)) {
-        throw new Error(
-            `Command "${commandName}" is not allowed.`
-        );
-    }
-
-    try {
-
-        const output = execSync(command, {
-            cwd: process.cwd(),
-            encoding: "utf-8",
-            timeout: 10000
-        });
-
-        return {
-            success: true,
-            output: output
-        };
-
-    } catch (error) {
-
-        return {
-            success: false,
-            output: error.stdout || error.message
-        };
-    }
+    return {
+      success: true,
+      output: output.trim(),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      output: error.stdout?.toString().trim() || "",
+      error: error.stderr?.toString().trim() || error.message,
+    };
+  }
 }
 
 module.exports = {
-    runCommand
+  runCommand,
 };

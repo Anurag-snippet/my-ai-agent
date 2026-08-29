@@ -7,6 +7,7 @@ const { SYSTEM_PROMPT } = require("./prompts");
 const { askForApproval } = require("./approval");
 const { createDiff } = require("./diff");
 const { getSafePath } = require("../workspace");
+const { isDangerousCommand } = require("./commandSafety");
 
 // --------------------------------
 // Gemini client
@@ -290,12 +291,48 @@ async function runAgent(contents) {
               filePath,
             };
           }
-        } else {
-          result = tool(functionCall.args);
+        } } else if (functionCall.name === "runCommand") {
+    const { command } = functionCall.args;
 
-          console.log("\n📁 Tool result:");
-          console.log(result);
+    console.log("\n💻 Requested command:");
+    console.log(command);
+
+    if (isDangerousCommand(command)) {
+        console.log("\n⚠️ This command may be dangerous.");
+
+        const approved = await askForApproval(
+            "Allow this command to run?"
+        );
+
+        if (!approved) {
+            console.log("\n❌ Command rejected.");
+
+            result = {
+                success: false,
+                message: "User rejected the command.",
+            };
+        } else {
+            console.log("\n▶️ Running command...");
+
+            result = tool(functionCall.args);
+
+            console.log("\n📁 Command result:");
+            console.log(result);
         }
+    } else {
+        console.log("\n▶️ Running command...");
+
+        result = tool(functionCall.args);
+
+        console.log("\n📁 Command result:");
+        console.log(result);
+    }
+} else {
+    result = tool(functionCall.args);
+
+    console.log("\n📁 Tool result:");
+    console.log(result);
+}
 
         contents.push({
           role: "tool",
