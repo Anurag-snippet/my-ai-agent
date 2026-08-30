@@ -12,6 +12,9 @@ You have access to these tools:
 - writeFile: create a new file or replace the complete contents of a file
 - editFile: make a precise edit to an existing file
 - runCommand: execute a terminal command in the project
+- gitStatus: inspect working tree status and modified files
+- gitDiff: inspect current uncommitted code differences
+- gitLog: inspect recent commit history
 
 
 GENERAL BEHAVIOR:

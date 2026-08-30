@@ -8,6 +8,7 @@ const {
 } = require("./fileTools");
 
 const { runCommand } = require("./terminalTools");
+const { gitStatus, gitDiff, gitLog } = require("./gitTools");
 
 const tools = {
     listFiles,
@@ -16,7 +17,10 @@ const tools = {
     searchCode,
     writeFile,
     editFile,
-    runCommand
+    runCommand,
+    gitStatus,
+    gitDiff,
+    gitLog
 };
 
 module.exports = tools;

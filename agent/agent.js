@@ -41,6 +41,8 @@ const listFilesDeclaration = {
   },
 };
 
+// --------------------------------
+
 const getProjectStructureDeclaration = {
   name: "getProjectStructure",
 
@@ -53,6 +55,8 @@ const getProjectStructureDeclaration = {
     properties: {},
   },
 };
+
+// --------------------------------
 
 const readFileDeclaration = {
   name: "readFile",
@@ -73,6 +77,8 @@ const readFileDeclaration = {
   },
 };
 
+// --------------------------------
+
 const searchCodeDeclaration = {
   name: "searchCode",
 
@@ -85,7 +91,8 @@ const searchCodeDeclaration = {
     properties: {
       query: {
         type: Type.STRING,
-        description: "The keyword or text to search for in the source code.",
+        description:
+          "The keyword or text to search for in the source code.",
       },
     },
 
@@ -93,10 +100,13 @@ const searchCodeDeclaration = {
   },
 };
 
+// --------------------------------
+
 const writeFileDeclaration = {
   name: "writeFile",
 
-  description: "Writes content to a file. Use this to create or modify files.",
+  description:
+    "Writes content to a file. Use this to create or modify files.",
 
   parameters: {
     type: Type.OBJECT,
@@ -104,18 +114,22 @@ const writeFileDeclaration = {
     properties: {
       filePath: {
         type: Type.STRING,
-        description: "The path of the file to create or modify.",
+        description:
+          "The path of the file to create or modify.",
       },
 
       content: {
         type: Type.STRING,
-        description: "The complete new content of the file.",
+        description:
+          "The complete new content of the file.",
       },
     },
 
     required: ["filePath", "content"],
   },
 };
+
+// --------------------------------
 
 const editFileDeclaration = {
   name: "editFile",
@@ -129,23 +143,32 @@ const editFileDeclaration = {
     properties: {
       filePath: {
         type: Type.STRING,
-        description: "The path of the file to edit.",
+        description:
+          "The path of the file to edit.",
       },
 
       oldText: {
         type: Type.STRING,
-        description: "The exact existing text that should be replaced.",
+        description:
+          "The exact existing text that should be replaced.",
       },
 
       newText: {
         type: Type.STRING,
-        description: "The new text that should replace oldText.",
+        description:
+          "The new text that should replace oldText.",
       },
     },
 
-    required: ["filePath", "oldText", "newText"],
+    required: [
+      "filePath",
+      "oldText",
+      "newText",
+    ],
   },
 };
+
+// --------------------------------
 
 const runCommandDeclaration = {
   name: "runCommand",
@@ -159,11 +182,63 @@ const runCommandDeclaration = {
     properties: {
       command: {
         type: Type.STRING,
-        description: "The terminal command to execute.",
+        description:
+          "The terminal command to execute.",
       },
     },
 
     required: ["command"],
+  },
+};
+
+// --------------------------------
+
+const gitStatusDeclaration = {
+  name: "gitStatus",
+
+  description:
+    "Returns the current git repository status including modified, untracked, and staged files.",
+
+  parameters: {
+    type: Type.OBJECT,
+
+    properties: {},
+  },
+};
+
+// --------------------------------
+
+const gitDiffDeclaration = {
+  name: "gitDiff",
+
+  description:
+    "Returns the uncommitted git diff (working directory changes).",
+
+  parameters: {
+    type: Type.OBJECT,
+
+    properties: {},
+  },
+};
+
+// --------------------------------
+
+const gitLogDeclaration = {
+  name: "gitLog",
+
+  description:
+    "Returns recent commit history for the repository.",
+
+  parameters: {
+    type: Type.OBJECT,
+
+    properties: {
+      count: {
+        type: Type.INTEGER,
+        description:
+          "The number of recent commits to inspect (default: 5).",
+      },
+    },
   },
 };
 
@@ -179,6 +254,9 @@ const toolDeclarations = [
   writeFileDeclaration,
   editFileDeclaration,
   runCommandDeclaration,
+  gitStatusDeclaration,
+  gitDiffDeclaration,
+  gitLogDeclaration,
 ];
 
 // --------------------------------
@@ -189,24 +267,34 @@ async function runAgent(contents) {
   let finalText = "";
 
   while (true) {
-    const stream = await ai.models.generateContentStream({
-      model: "gemini-3.1-flash-lite",
+    // --------------------------------
+    // Ask Gemini
+    // --------------------------------
 
-      contents: contents,
+    const stream =
+      await ai.models.generateContentStream({
+        model: "gemini-3.1-flash-lite",
 
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
+        contents: contents,
 
-        tools: [
-          {
-            functionDeclarations: toolDeclarations,
-          },
-        ],
-      },
-    });
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+
+          tools: [
+            {
+              functionDeclarations:
+                toolDeclarations,
+            },
+          ],
+        },
+      });
 
     let functionCalls = [];
     let responseContent = null;
+
+    // --------------------------------
+    // Read Gemini stream
+    // --------------------------------
 
     for await (const chunk of stream) {
       if (chunk.text) {
@@ -216,123 +304,425 @@ async function runAgent(contents) {
       }
 
       if (chunk.functionCalls) {
-        functionCalls.push(...chunk.functionCalls);
+        functionCalls.push(
+          ...chunk.functionCalls
+        );
 
-        responseContent = chunk.candidates?.[0]?.content;
+        responseContent =
+          chunk.candidates?.[0]?.content ||
+          responseContent;
       }
     }
 
+    // --------------------------------
+    // Gemini wants to use a tool
+    // --------------------------------
+
     if (functionCalls.length > 0) {
+      // Add Gemini's tool call to conversation
       if (responseContent) {
         contents.push(responseContent);
       }
 
+      // --------------------------------
+      // Execute every requested tool
+      // --------------------------------
+
       for (const functionCall of functionCalls) {
-        console.log("\n\n🔧 Gemini wants to use:");
+        console.log(
+          "\n\n🔧 Gemini wants to use:"
+        );
 
-        console.log("Tool:", functionCall.name);
+        console.log(
+          "Tool:",
+          functionCall.name
+        );
 
-        console.log("Arguments:", functionCall.args);
-
-        const tool = tools[functionCall.name];
-
-        if (!tool) {
-          throw new Error(`Tool ${functionCall.name} not found`);
-        }
+        console.log(
+          "Arguments:",
+          functionCall.args
+        );
 
         let result;
 
-        if (functionCall.name === "editFile") {
-          const { filePath, oldText, newText } = functionCall.args;
+        try {
+          // --------------------------------
+          // Find tool
+          // --------------------------------
 
-          const safePath = getSafePath(filePath);
+          const tool =
+            tools[functionCall.name];
 
-          const oldContent = fs.readFileSync(safePath, "utf-8");
-
-          const occurrences = oldContent.split(oldText).length - 1;
-
-          if (occurrences === 0) {
-            throw new Error("The specified oldText was not found in the file.");
-          }
-
-          if (occurrences > 1) {
+          if (!tool) {
             throw new Error(
-              `The specified oldText was found ${occurrences} times.`,
+              `Tool ${functionCall.name} not found`
             );
           }
 
-          const newContent = oldContent.replace(oldText, newText);
+          // =================================
+          // EDIT FILE
+          // =================================
 
-          const diff = createDiff(oldContent, newContent);
-
-          console.log("\n\n📝 Proposed change:");
-          console.log("--------------------------------");
-          console.log(diff);
-          console.log("--------------------------------");
-
-          const approved = await askForApproval("Apply this change?");
-
-          if (approved) {
-            fs.writeFileSync(safePath, newContent, "utf-8");
-
-            console.log("\n✅ Change applied successfully.");
-
-            result = {
-              success: true,
-              message: "Change applied successfully.",
+          if (
+            functionCall.name === "editFile"
+          ) {
+            const {
               filePath,
-            };
-          } else {
-            console.log("\n❌ Change rejected by user.");
+              oldText,
+              newText,
+            } = functionCall.args;
 
-            result = {
-              success: false,
-              message: "User rejected the change.",
-              filePath,
-            };
-          }
-        } } else if (functionCall.name === "runCommand") {
-    const { command } = functionCall.args;
+            // --------------------------------
+            // Get safe path
+            // --------------------------------
 
-    console.log("\n💻 Requested command:");
-    console.log(command);
+            const safePath =
+              getSafePath(filePath);
 
-    if (isDangerousCommand(command)) {
-        console.log("\n⚠️ This command may be dangerous.");
+            // --------------------------------
+            // Read current file
+            // --------------------------------
 
-        const approved = await askForApproval(
-            "Allow this command to run?"
-        );
+            const oldContent =
+              fs.readFileSync(
+                safePath,
+                "utf-8"
+              );
 
-        if (!approved) {
-            console.log("\n❌ Command rejected.");
+            // --------------------------------
+            // Check how many matches exist
+            // --------------------------------
 
-            result = {
+            const occurrences =
+              oldContent
+                .split(oldText)
+                .length - 1;
+
+            if (occurrences === 0) {
+              throw new Error(
+                "The specified oldText was not found in the file."
+              );
+            }
+
+            if (occurrences > 1) {
+              throw new Error(
+                `The specified oldText was found ${occurrences} times.`
+              );
+            }
+
+            // --------------------------------
+            // Create new content
+            // --------------------------------
+
+            const newContent =
+              oldContent.replace(
+                oldText,
+                newText
+              );
+
+            // --------------------------------
+            // Generate diff
+            // --------------------------------
+
+            const diff = createDiff(
+              oldContent,
+              newContent
+            );
+
+            console.log(
+              "\n\n📝 Proposed change:"
+            );
+
+            console.log(
+              "--------------------------------"
+            );
+
+            console.log(diff);
+
+            console.log(
+              "--------------------------------"
+            );
+
+            // --------------------------------
+            // Ask user
+            // --------------------------------
+
+            const approved =
+              await askForApproval(
+                "Apply this change?"
+              );
+
+            // --------------------------------
+            // User approved
+            // --------------------------------
+
+            if (approved) {
+              fs.writeFileSync(
+                safePath,
+                newContent,
+                "utf-8"
+              );
+
+              console.log(
+                "\n✅ Change applied successfully."
+              );
+
+              result = {
+                success: true,
+                message:
+                  "Change applied successfully.",
+                filePath,
+              };
+            }
+
+            // --------------------------------
+            // User rejected
+            // --------------------------------
+
+            else {
+              console.log(
+                "\n❌ Change rejected by user."
+              );
+
+              result = {
                 success: false,
-                message: "User rejected the command.",
-            };
-        } else {
-            console.log("\n▶️ Running command...");
+                message:
+                  "User rejected the change.",
+                filePath,
+              };
+            }
+          }
 
-            result = tool(functionCall.args);
+          // =================================
+          // WRITE FILE
+          // =================================
 
-            console.log("\n📁 Command result:");
+          else if (
+            functionCall.name === "writeFile"
+          ) {
+            const { filePath, content } =
+              functionCall.args;
+
+            // --------------------------------
+            // Get safe path
+            // --------------------------------
+
+            const safePath =
+              getSafePath(filePath);
+
+            // --------------------------------
+            // Check if file exists
+            // --------------------------------
+
+            const exists =
+              fs.existsSync(safePath);
+
+            let diff;
+
+            if (exists) {
+              const oldContent =
+                fs.readFileSync(
+                  safePath,
+                  "utf-8"
+                );
+
+              diff = createDiff(
+                oldContent,
+                content
+              );
+
+              console.log(
+                "\n\n📝 Proposed change for existing file:"
+              );
+            } else {
+              diff = createDiff(
+                "",
+                content
+              );
+
+              console.log(
+                `\n\n📝 Proposed new file (${filePath}):`
+              );
+            }
+
+            console.log(
+              "--------------------------------"
+            );
+
+            console.log(diff);
+
+            console.log(
+              "--------------------------------"
+            );
+
+            // --------------------------------
+            // Ask user for approval
+            // --------------------------------
+
+            const promptMsg = exists
+              ? "Overwrite this file?"
+              : `Create file ${filePath}?`;
+
+            const approved =
+              await askForApproval(promptMsg);
+
+            // --------------------------------
+            // User approved
+            // --------------------------------
+
+            if (approved) {
+              fs.writeFileSync(
+                safePath,
+                content,
+                "utf-8"
+              );
+
+              console.log(
+                "\n✅ File written successfully."
+              );
+
+              result = {
+                success: true,
+                message:
+                  "File written successfully.",
+                filePath,
+              };
+            }
+
+            // --------------------------------
+            // User rejected
+            // --------------------------------
+
+            else {
+              console.log(
+                "\n❌ File write rejected by user."
+              );
+
+              result = {
+                success: false,
+                message:
+                  "User rejected writing to file.",
+                filePath,
+              };
+            }
+          }
+
+          // =================================
+          // RUN COMMAND
+          // =================================
+
+          else if (
+            functionCall.name === "runCommand"
+          ) {
+            const { command } =
+              functionCall.args;
+
+            console.log(
+              "\n💻 Requested command:"
+            );
+
+            console.log(command);
+
+            // --------------------------------
+            // Check command safety
+            // --------------------------------
+
+            if (
+              isDangerousCommand(command)
+            ) {
+              console.log(
+                "\n⚠️ This command may be dangerous."
+              );
+
+              const approved =
+                await askForApproval(
+                  "Allow this command to run?"
+                );
+
+              // --------------------------------
+              // User rejected command
+              // --------------------------------
+
+              if (!approved) {
+                console.log(
+                  "\n❌ Command rejected."
+                );
+
+                result = {
+                  success: false,
+                  message:
+                    "User rejected the command.",
+                };
+              }
+
+              // --------------------------------
+              // User approved command
+              // --------------------------------
+
+              else {
+                console.log(
+                  "\n▶️ Running command..."
+                );
+
+                result =
+                  tool(functionCall.args);
+
+                console.log(
+                  "\n📁 Command result:"
+                );
+
+                console.log(result);
+              }
+            }
+
+            // --------------------------------
+            // Safe command
+            // --------------------------------
+
+            else {
+              console.log(
+                "\n▶️ Running command..."
+              );
+
+              result =
+                tool(functionCall.args);
+
+              console.log(
+                "\n📁 Command result:"
+              );
+
+              console.log(result);
+            }
+          }
+
+          // =================================
+          // ALL OTHER TOOLS
+          // =================================
+
+          else {
+            result =
+              tool(functionCall.args);
+
+            console.log(
+              "\n📁 Tool result:"
+            );
+
             console.log(result);
+          }
+        } catch (error) {
+          console.log(
+            `\n⚠️ Tool execution error: ${error.message}`
+          );
+
+          result = {
+            success: false,
+            error: error.message,
+          };
         }
-    } else {
-        console.log("\n▶️ Running command...");
 
-        result = tool(functionCall.args);
-
-        console.log("\n📁 Command result:");
-        console.log(result);
-    }
-} else {
-    result = tool(functionCall.args);
-
-    console.log("\n📁 Tool result:");
-    console.log(result);
-}
+        // --------------------------------
+        // Send tool result back to Gemini
+        // --------------------------------
 
         contents.push({
           role: "tool",
@@ -340,7 +730,8 @@ async function runAgent(contents) {
           parts: [
             {
               functionResponse: {
-                name: functionCall.name,
+                name:
+                  functionCall.name,
 
                 response: {
                   result: result,
@@ -352,8 +743,18 @@ async function runAgent(contents) {
           ],
         });
       }
+
+      // --------------------------------
+      // Ask Gemini again
+      // --------------------------------
+
       continue;
     }
+
+    // --------------------------------
+    // No tool call
+    // Gemini produced final answer
+    // --------------------------------
 
     console.log("\n");
 
