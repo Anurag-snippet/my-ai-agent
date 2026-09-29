@@ -1,27 +1,21 @@
-const { execSync } = require("child_process");
+// tools/terminalTools.js
+// Compatibility shim forwarding to src/tools/terminalTools.js
 
-function runCommand({ command }) {
-  try {
-    const output = execSync(command, {
-      cwd: process.cwd(),
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-      timeout: 30000,
-    });
-
-    return {
-      success: true,
-      output: output.trim(),
-    };
-  } catch (error) {
-    return {
-      success: false,
-      output: error.stdout?.toString().trim() || "",
-      error: error.stderr?.toString().trim() || error.message,
-    };
-  }
-}
+const { runCommand } = require("../src/tools/terminalTools");
 
 module.exports = {
-  runCommand,
+  runCommand: (args) => {
+    const res = runCommand(args);
+    if (res.success) {
+      return {
+        success: true,
+        output: res.data?.stdout || "",
+      };
+    }
+    return {
+      success: false,
+      output: res.error?.details?.stdout || "",
+      error: res.error?.message || "Execution error",
+    };
+  },
 };

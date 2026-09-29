@@ -1,26 +1,14 @@
-const readline = require("readline");
+// agent/approval.js
+// Compatibility shim forwarding to src/agent/ApprovalManager.js
 
-function askForApproval(message) {
-  return new Promise((resolve) => {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-
-    rl.question(
-      `${message} [y/n]: `,
-      (answer) => {
-        rl.close();
-
-        resolve(
-          answer.trim().toLowerCase() === "y"
-        );
-      }
-    );
-  });
-}
+const {
+  ApprovalManager,
+  getApprovalManager,
+  askForApproval,
+} = require("../src/agent/ApprovalManager");
 
 module.exports = {
+  ApprovalManager,
+  getApprovalManager,
   askForApproval,
 };
-

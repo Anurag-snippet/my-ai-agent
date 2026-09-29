@@ -1,48 +1,20 @@
-const { execSync } = require("child_process");
-const { WORKSPACE_ROOT } = require("../workspace");
+// tools/gitTools.js
+// Compatibility shim forwarding to src/tools/gitTools.js
 
-function gitStatus() {
-  try {
-    const output = execSync("git status", {
-      cwd: WORKSPACE_ROOT,
-      encoding: "utf-8",
-      timeout: 10000,
-    });
-    return output.trim();
-  } catch (error) {
-    return error.stderr?.toString().trim() || error.message;
-  }
-}
-
-function gitDiff() {
-  try {
-    const output = execSync("git diff", {
-      cwd: WORKSPACE_ROOT,
-      encoding: "utf-8",
-      timeout: 10000,
-    });
-    return output.trim() || "No uncommitted changes.";
-  } catch (error) {
-    return error.stderr?.toString().trim() || error.message;
-  }
-}
-
-function gitLog({ count = 5 } = {}) {
-  try {
-    const limit = parseInt(count, 10) || 5;
-    const output = execSync(`git log -n ${limit} --oneline`, {
-      cwd: WORKSPACE_ROOT,
-      encoding: "utf-8",
-      timeout: 10000,
-    });
-    return output.trim();
-  } catch (error) {
-    return error.stderr?.toString().trim() || error.message;
-  }
-}
+const gitTools = require("../src/tools/gitTools");
 
 module.exports = {
-  gitStatus,
-  gitDiff,
-  gitLog,
+  ...gitTools,
+  gitStatus: () => {
+    const res = gitTools.gitStatus();
+    return res.success ? res.data.raw : (res.error?.message || "");
+  },
+  gitDiff: (args) => {
+    const res = gitTools.gitDiff(args);
+    return res.success ? res.data.diff : (res.error?.message || "");
+  },
+  gitLog: (args) => {
+    const res = gitTools.gitLog(args);
+    return res.success ? res.data.raw : (res.error?.message || "");
+  },
 };

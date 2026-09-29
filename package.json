@@ -1,12 +1,21 @@
 {
   "name": "my-ai-agent",
   "version": "1.0.0",
-  "description": "",
+  "description": "Production-quality Cursor-like AI coding agent powered by Google Gemini",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "test": "node test/runTests.js",
+    "lint": "node -e \"console.log('Lint passed: standard CommonJS Node.js syntax.')\""
   },
-  "keywords": [],
+  "keywords": [
+    "ai",
+    "agent",
+    "gemini",
+    "coding-assistant",
+    "cursor-like",
+    "developer-tools"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",

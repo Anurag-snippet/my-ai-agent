@@ -1,165 +1,257 @@
 # My AI Agent
 
-A lightweight, Cursor-like AI coding agent built with Node.js and Gemini. The project explores how modern coding agents inspect a codebase, use tools, modify files safely, run commands, and iterate based on results.
+A production-quality, autonomous Cursor-like AI coding agent running directly in your workspace, powered by **Google Gemini** with structured function calling, real-time streaming, and robust safety controls.
 
-## Features
+---
 
-- Gemini-powered AI coding assistant
-- Function calling with a tool-based agent loop
-- Project structure and file inspection
-- Source-code search with surrounding context
-- Targeted file editing
-- File creation and replacement
-- Workspace path isolation to prevent access outside the project
-- Diff generation before code changes
-- Human approval for file modifications
-- Basic command safety checks
-- Terminal command execution for testing and verification
-- Streaming model responses
-- Multi-step tool execution
+## Overview
 
-## Tech Stack
+**My AI Agent** acts as an autonomous pair programmer. It does not blindly guess file paths or make assumptions—it inspects your codebase, analyzes dependencies and frameworks, plans minimal surgical edits, generates unified diffs for interactive user approval, and executes tests or linters to empirically verify its work.
 
-- Node.js
-- JavaScript
-- Gemini API
-- `@google/genai`
-- File System APIs
-- Git
+---
 
-## Project Structure
+## Architecture & System Design
 
-```text
-my-ai-agent/
-├── agent/
-│   ├── agent.js
-│   ├── prompts.js
-│   ├── approval.js
-│   ├── diff.js
-│   └── commandSafety.js
-│
-├── tools/
-│   ├── fileTools.js
-│   ├── terminalTools.js
-│   └── index.js
-│
-├── workspace.js
-├── index.js
-├── .env
-├── .gitignore
-├── package.json
-└── package-lock.json
+The agent is organized into clean, single-responsibility modules:
+
 ```
+my-ai-agent/
+├── src/
+│   ├── agent/
+│   │   ├── Agent.js             # High-level orchestrator & session lifecycle
+│   │   ├── AgentLoop.js         # Iterative reasoning, multi-tool execution & verification
+│   │   ├── ApprovalManager.js   # Centralized approval system ([y/n/a]) with session memory
+│   │   ├── ContextManager.js    # Compaction, token budgeting & working memory
+│   │   ├── Planner.js           # Read-only planning mode (/plan)
+│   │   ├── ToolExecutor.js      # Tool dispatch, safety gating, diff calculation & history
+│   │   └── prompts.js           # Senior engineer system prompts
+│   ├── safety/
+│   │   ├── commandSafety.js     # SAFE / LOW_RISK / HIGH_RISK / DESTRUCTIVE categorization & policies
+│   │   └── pathSafety.js        # Workspace traversal defense, symlinks, binary & secret guards
+│   ├── tools/
+│   │   ├── index.js             # Unified tool registry & Gemini function declarations
+│   │   ├── fileTools.js         # listFiles, readFile, writeFile, editFile, deleteFile, moveFile, getFileInfo
+│   │   ├── searchTools.js       # Real code search (regex, exact, context lines, filters)
+│   │   ├── terminalTools.js     # Safe terminal execution with exit code, stdout, stderr, timeout
+│   │   ├── gitTools.js          # gitStatus, gitDiff, gitLog, gitBranch, gitShow, gitBlame
+│   │   └── projectTools.js      # Stack analysis & structure tree
+│   ├── ui/
+│   │   ├── cli.js               # Interactive REPL & slash command processor
+│   │   ├── renderer.js          # Unified diff cards, boxes, status indicators & banners
+│   │   └── spinner.js           # Terminal activity indicator
+│   └── utils/
+│       ├── config.js            # Configuration (.agent/config.json + env vars)
+│       ├── diff.js              # LCS-based unified diff with hunk generation & colorization
+│       ├── errors.js            # Standardized tool results and AgentError hierarchy
+│       ├── history.js           # Audit trail with full /undo & /redo support
+│       └── logger.js            # Structured logger with automatic secret redaction
+├── test/
+│   ├── runTests.js              # Automated test suite (15 unit & integration tests)
+│   ├── e2eTest.js               # Live end-to-end coding agent validation
+│   └── testHelper.js            # Isolated test workspace fixtures
+├── index.js                     # CLI entry point
+├── package.json
+└── README.md
+```
+
+---
 
 ## How It Works
 
-The agent follows a tool-calling loop:
-
-```text
-User Request
+```
+USER REQUEST
      ↓
-   Gemini
+[1. UNDERSTAND]  Extract intent, context, and requirements
      ↓
-Tool Call?
-  ┌──┴──┐
- No    Yes
- ↓       ↓
-Final   Execute Tool
-Answer     ↓
-         Result
-           ↓
-         Gemini
-           ↓
-      Continue / Finish
+[2. INSPECT]     Analyze project type, search codebase, read relevant files
+     ↓
+[3. PLAN]        Formulate the minimal surgical change required
+     ↓
+[4. DIFF & APPROVE] Generate unified diff; prompt user ([y]es, [n]o, [a]pprove all)
+     ↓
+[5. APPLY & SNAPSHOT] Write changes and record in history for instant /undo
+     ↓
+[6. VERIFY]      Automatically run project tests, linter, or syntax checks
+     ↓
+[7. REPAIR LOOP] If verification fails, inspect errors and iterate (up to 3 times)
+     ↓
+[8. FINAL REPORT] Summarize what changed, files modified, and verification evidence
 ```
 
-For a coding task, the agent can inspect the project, read relevant files, search for code, propose a change, request approval, apply the change, run a verification command, and use the result to continue working.
+---
 
-## Setup
+## Key Features
 
-### 1. Clone the repository
+1. **Autonomous Tool Calling**:
+   - Uses native Gemini function calling (`@google/genai`) to execute multi-step tool calls in a single turn.
+2. **Unified Diff Approval System**:
+   - Every file modification produces standard unified diffs (`@@ -l,s +l,s @@`) with syntax colorization before applying.
+   - User choices: `y` (approve), `n` (reject), `a` (approve all subsequent changes for this session).
+3. **Reversible History (`/undo` & `/redo`)**:
+   - Every accepted file edit, write, move, or deletion is recorded in an in-memory stack and persisted to `.agent/history/`.
+   - Run `/undo` to instantly revert the last change.
+4. **Command Safety & Allow/Denylist**:
+   - Classifies commands into `SAFE`, `LOW_RISK`, `HIGH_RISK`, and `DESTRUCTIVE`.
+   - Windows and Unix patterns prevent dangerous commands (`rm -rf`, `rmdir /s`, `format`, `shutdown`, `git reset --hard`) from running without explicit confirmation.
+   - Configurable allowlist/denylist via `.agent/config.json`.
+5. **Real Code Search**:
+   - Regex or exact text search with surrounding context lines, file extension filters, and automatic exclusion of `node_modules`, `.git`, and build folders.
+6. **Path Traversal & Secret Protection**:
+   - Workspace boundary enforcement (`../` and absolute paths outside root are blocked).
+   - Never reads or exposes `.env`, private keys (`.pem`, `id_rsa`), or binary assets (`.png`, `.zip`, `.exe`).
+   - Redacts secrets from logs and terminal output.
+7. **Large File Pagination**:
+   - Supports `startLine`, `endLine`, `maxLines`, and `maxChars` to prevent context explosion.
+8. **Automated Verification & Repair**:
+   - Detects test scripts (`npm test`, `pytest`, `cargo test`, `node --check`) and verifies changes post-edit.
+9. **Planning Mode (`/plan`)**:
+   - Inspects the codebase and produces an architectural plan without modifying files.
+
+---
+
+## Installation & Setup
+
+### Prerequisites
+- Node.js 18+ (CommonJS)
+- A Google Gemini API Key
+
+### Installation
 
 ```bash
-git clone https://github.com/Anurag-snippet/my-ai-agent.git
+git clone <repo-url>
 cd my-ai-agent
-```
-
-### 2. Install dependencies
-
-```bash
 npm install
 ```
 
-### 3. Configure the Gemini API key
+### Environment Configuration
 
 Create a `.env` file in the project root:
 
 ```env
-GEMINI_API_KEY=your_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-3.8-flash
+LOG_LEVEL=info
 ```
 
-Never commit your API key. The `.env` file should remain ignored by Git.
+Optional: Configure `.agent/config.json`:
 
-### 4. Run the agent
+```json
+{
+  "model": "gemini-3.8-flash",
+  "maxIterations": 30,
+  "maxRepairAttempts": 3,
+  "maxFileSize": 100000,
+  "maxSearchResults": 50,
+  "commandTimeout": 30000,
+  "allowCommands": ["npm", "node", "git", "npx", "dir", "ls"],
+  "denyCommands": ["format", "shutdown", "diskpart"]
+}
+```
+
+---
+
+## Usage
+
+Start the agent:
 
 ```bash
-node index.js
+npm start
 ```
 
-Then enter a coding request. Use `exit` to close the CLI.
+### Interactive CLI
 
-## Available Tools
+```
+╭──────────────────────────────────────────────────╮
+│               MY AI CODING AGENT                 │
+│       Autonomous Cursor-like Engineering Agent   │
+╰──────────────────────────────────────────────────╯
+Model:     gemini-3.8-flash
+Workspace: C:/projects/my-ai-agent
+Type /help for available commands or exit to quit.
+
+You: Fix the authentication token expiration bug
+```
+
+---
+
+## Slash Commands
+
+All slash commands run locally without consuming API tokens:
+
+| Command | Description |
+|---|---|
+| `/help` | Display list of available commands |
+| `/plan <task>` | Formulate a detailed engineering plan without modifying files |
+| `/undo` | Revert the most recent approved file modification |
+| `/redo` | Re-apply the last undone file modification |
+| `/history` | Show the file modification audit history for this session |
+| `/diff` | Display uncommitted Git diff |
+| `/status` | View agent memory, active model, and session state |
+| `/tree` | Display project file hierarchy |
+| `/model [name]` | View or switch the active Gemini model |
+| `/context` | Inspect working memory and conversation size |
+| `/compact` | Manually compress older tool results |
+| `/test` | Run the project's test suite |
+| `/lint` | Run the project's linter |
+| `/build` | Run the project's build script |
+| `/git <status\|diff\|log>` | Run quick Git inspection commands |
+| `/reset` | Clear conversation history and reset approvals |
+| `/clear` | Clear the terminal screen |
+| `/exit` | Exit the CLI |
+
+---
+
+## Available Tools for Gemini
 
 | Tool | Purpose |
 |---|---|
-| `listFiles` | Inspect files in a directory |
-| `getProjectStructure` | Get the overall project file structure |
-| `readFile` | Read a file |
-| `searchCode` | Search source code and return matching context |
-| `writeFile` | Create or replace a file |
-| `editFile` | Make a targeted edit to an existing file |
-| `runCommand` | Run terminal commands for inspection, testing, or verification |
+| `listFiles` | List directory contents safely |
+| `getProjectStructure` | Retrieve project file tree excluding dependencies |
+| `analyzeProject` | Detect language, framework, dependencies, and test commands |
+| `readFile` | Read file with line-range pagination and size guards |
+| `searchCode` | Regex and exact text search with context lines |
+| `writeFile` | Create or overwrite files with unified diff preview |
+| `editFile` | Targeted text replacement with exact unique snippet check |
+| `deleteFile` | Safely remove files with approval and undo backup |
+| `moveFile` | Move or rename files |
+| `getFileInfo` | Get file metadata (size, lines, modified date) without reading content |
+| `runCommand` | Run terminal commands with exit codes, timeout, and safety validation |
+| `gitStatus` | Inspect modified, staged, and untracked files |
+| `gitDiff` | Inspect uncommitted changes |
+| `gitLog` | Inspect recent commit history |
+| `gitBranch` | Check current branch and available branches |
+| `gitShow` | Show commit details and patch |
+| `gitBlame` | Annotate line-by-line author and commit info |
 
-## Safety
+---
 
-The agent includes basic safeguards around file and command operations:
+## Testing
 
-- File paths are restricted to the workspace.
-- Existing-file edits require human approval.
-- Diffs can be reviewed before changes are applied.
-- Potentially destructive terminal commands are checked and may require approval.
-- Tool results are returned to Gemini so it can verify whether an operation actually succeeded.
+Run the automated test suite:
 
-These safeguards are intended for learning and local development. They are not a complete security sandbox.
+```bash
+npm test
+```
 
-## Learning Goals
+Run the end-to-end integration test:
 
-This project is built as a practical GenAI learning project to understand:
+```bash
+node test/e2eTest.js
+```
 
-- LLM function calling
-- Agent loops
-- Tool registries
-- Context and conversation history
-- Codebase inspection
-- Safe code modification
-- Human-in-the-loop approval
-- Command execution and verification
-- Building agent systems with Node.js
+---
 
-## Future Improvements
+## Technology Stack
 
-- Better patch-based diff generation
-- More robust command sandboxing
-- Improved code search and indexing
-- Automatic test selection
-- Better context management for large repositories
-- Planning and task decomposition
-- More reliable error recovery
-- Support for additional development tools
+- **Runtime**: Node.js (CommonJS, JavaScript)
+- **AI Model**: Google Gemini (`@google/genai`)
+- **File Matching**: `glob`
+- **Configuration**: `dotenv`, `.agent/config.json`
+- **Diff Engine**: Custom LCS-based Unified Diff with hunks & ANSI formatting
+- **Test Runner**: Custom zero-dependency test framework (`test/runTests.js`)
 
-## Author
+---
 
-**Anurag Yadav**
+## License
 
-- GitHub: https://github.com/Anurag-snippet
-- Project: https://github.com/Anurag-snippet/my-ai-agent
+ISC

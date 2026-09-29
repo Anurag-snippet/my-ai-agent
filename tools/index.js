@@ -1,26 +1,6 @@
-const {
-    listFiles,
-    getProjectStructure,
-    readFile,
-    searchCode,
-    writeFile,
-    editFile
-} = require("./fileTools");
+// tools/index.js
+// Compatibility shim forwarding to src/tools/index.js
 
-const { runCommand } = require("./terminalTools");
-const { gitStatus, gitDiff, gitLog } = require("./gitTools");
+const srcTools = require("../src/tools");
 
-const tools = {
-    listFiles,
-    getProjectStructure,
-    readFile,
-    searchCode,
-    writeFile,
-    editFile,
-    runCommand,
-    gitStatus,
-    gitDiff,
-    gitLog
-};
-
-module.exports = tools;
+module.exports = srcTools;
