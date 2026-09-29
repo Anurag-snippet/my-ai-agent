@@ -1,6 +1,6 @@
 # My AI Agent
 
-A production-quality, autonomous Cursor-like AI coding agent running directly in your workspace, powered by **Google Gemini** with structured function calling, real-time streaming, and robust safety controls.
+A production-quality, autonomous AI coding agent running directly in your workspace, powered by **Google Gemini** with structured function calling, real-time streaming, and robust safety controls.
 
 ---
 
